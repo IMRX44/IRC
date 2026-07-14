@@ -1,0 +1,3 @@
+-keep class com.irblaster.universal.data.** { *; }
+-keepattributes *Annotation*
+-dontwarn kotlinx.**
