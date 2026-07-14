@@ -32,6 +32,8 @@ data class SmartScanState(
     val foundCode: PowerCode? = null,
     val finished: Boolean = false,
     val gapMs: Long = 0L,
+    val repeatEach: Int = 1,
+    val framesSent: Int = 0,
 ) {
     val current: PowerCode? get() = codes.getOrNull(index)
     val progress: Float get() = if (codes.isEmpty()) 0f else (index + 1f) / codes.size
@@ -73,15 +75,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun brandProfilesFor(categoryId: String): List<BrandProfile> = PowerScan.brandsFor(categoryId)
 
-    fun startSmartScan(categoryId: String, brand: String, gapMs: Long = 0L) {
+    fun startSmartScan(categoryId: String, brand: String) {
         val codes = PowerScan.forBrand(categoryId, brand)
+        val prev = _smart.value
         smartJob?.cancel()
         _smart.value = SmartScanState(
             active = true, running = true, categoryId = categoryId,
-            brand = brand, codes = codes, index = 0, gapMs = gapMs
+            brand = brand, codes = codes, index = 0,
+            gapMs = prev.gapMs, repeatEach = prev.repeatEach.coerceAtLeast(1)
         )
         runSmartLoop()
     }
+
+    fun setGap(ms: Long) { _smart.value = _smart.value.copy(gapMs = ms.coerceIn(0, 500)) }
+    fun setRepeat(n: Int) { _smart.value = _smart.value.copy(repeatEach = n.coerceIn(1, 5)) }
 
     private fun runSmartLoop() {
         smartJob?.cancel()
@@ -93,15 +100,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _smart.value = s.copy(running = false, finished = true)
                     return@launch
                 }
-                transmitter.transmitRaw(code.frequency, code.pattern)
-                if (s.gapMs > 0) delay(s.gapMs)
+                // Send the frame repeatEach times. transmitRaw BLOCKS until the
+                // hardware finishes each frame, so nothing is skipped or overlapped.
+                var sent = 0
+                repeat(s.repeatEach.coerceAtLeast(1)) {
+                    if (transmitter.transmitRaw(code.frequency, code.pattern)) sent++
+                    if (s.gapMs > 0) delay(s.gapMs)
+                }
                 val cur = _smart.value
                 if (!cur.running) break
+                val total = cur.framesSent + sent
                 if (cur.index >= cur.codes.lastIndex) {
-                    _smart.value = cur.copy(running = false, finished = true)
+                    _smart.value = cur.copy(running = false, finished = true, framesSent = total)
                     break
                 }
-                _smart.value = cur.copy(index = cur.index + 1)
+                _smart.value = cur.copy(index = cur.index + 1, framesSent = total)
             }
         }
     }

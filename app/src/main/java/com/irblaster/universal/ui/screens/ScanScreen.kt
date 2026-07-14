@@ -41,16 +41,25 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -91,7 +100,7 @@ fun ScanScreen(
         if (!smart.active) {
             BrandPickerView(
                 categoryId = categoryId,
-                profiles = viewModel.brandProfilesFor(categoryId),
+                allProfiles = viewModel.brandProfilesFor(categoryId),
                 onBack = onBack,
                 onPick = { viewModel.startSmartScan(categoryId, it.brand) }
             )
@@ -108,6 +117,8 @@ fun ScanScreen(
                 onNext = { viewModel.stepNext() },
                 onPrev = { viewModel.stepPrev() },
                 onResend = { viewModel.resendCurrent() },
+                onGap = { viewModel.setGap(it) },
+                onRepeat = { viewModel.setRepeat(it) },
             )
         }
     }
@@ -116,10 +127,17 @@ fun ScanScreen(
 @Composable
 private fun BrandPickerView(
     categoryId: String,
-    profiles: List<BrandProfile>,
+    allProfiles: List<BrandProfile>,
     onBack: () -> Unit,
     onPick: (BrandProfile) -> Unit,
 ) {
+    var query by remember { mutableStateOf(TextFieldValue("")) }
+    val profiles = remember(query.text, allProfiles) {
+        val q = query.text.trim()
+        if (q.isEmpty()) allProfiles
+        else allProfiles.filter { it.brand.contains(q, ignoreCase = true) }
+    }
+
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         Spacer(Modifier.height(52.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -131,11 +149,47 @@ private fun BrandPickerView(
         }
         Spacer(Modifier.height(8.dp))
         Text(
-            "برند دستگاهت رو انتخاب کن. تمام کدهای روشن/خاموش اون برند خودکار و پشت‌سرهم فرستاده میشن — وقتی دستگاه واکنش نشون داد دکمه «✅ کار کرد» رو بزن.",
+            "برند دستگاهت رو انتخاب یا جستجو کن. تمام کدهای روشن/خاموش اون برند خودکار فرستاده میشن — وقتی دستگاه واکنش داد «✅ کار کرد» رو بزن.",
             style = MaterialTheme.typography.bodyMedium,
             color = Color.White.copy(0.55f)
         )
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(14.dp))
+
+        // Search bar
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .border(1.dp, NeonCyan.copy(0.5f), RoundedCornerShape(14.dp))
+                .background(DarkCard)
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.Search, null, tint = NeonCyan, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(10.dp))
+            Box(Modifier.weight(1f)) {
+                if (query.text.isEmpty()) {
+                    Text("جستجوی برند... (مثلاً X.Vision، سام، Epson)",
+                        style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(0.35f))
+                }
+                BasicTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.White),
+                    cursorBrush = SolidColor(NeonCyan),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            if (query.text.isNotEmpty()) {
+                Text("${profiles.size}", style = MaterialTheme.typography.labelMedium, color = NeonCyan)
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text("${allProfiles.size} برند در این دسته", style = MaterialTheme.typography.labelMedium,
+            color = Color.White.copy(0.4f))
+        Spacer(Modifier.height(14.dp))
+
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             contentPadding = PaddingValues(bottom = 40.dp),
@@ -191,6 +245,8 @@ private fun ScanningView(
     onNext: () -> Unit,
     onPrev: () -> Unit,
     onResend: () -> Unit,
+    onGap: (Long) -> Unit,
+    onRepeat: (Int) -> Unit,
 ) {
     val progressAnim by animateFloatAsState(smart.progress, tween(120), label = "p")
     val infinite = rememberInfiniteTransition(label = "rot")
@@ -265,13 +321,58 @@ private fun ScanningView(
             )
 
             Spacer(Modifier.height(6.dp))
-            Text(
-                if (smart.finished) "✓ همه کدها فرستاده شد — می‌تونی دوباره یا قبلی/بعدی رو امتحان کنی"
-                else if (smart.running) "در حال ارسال با حداکثر سرعت سخت‌افزار…"
-                else "متوقف شد — دستی جلو/عقب برو",
-                style = MaterialTheme.typography.labelMedium,
-                color = Color.White.copy(0.5f)
-            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(
+                    if (smart.finished) "✓ همه کدها فرستاده شد"
+                    else if (smart.running) "در حال ارسال…"
+                    else "متوقف — دستی جلو/عقب برو",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White.copy(0.5f)
+                )
+                Text("📤 ${smart.framesSent} فریم ارسال شد",
+                    style = MaterialTheme.typography.labelMedium, color = NeonGreen.copy(0.8f))
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            // Precision controls: gap (timeout) + repeat
+            Column(
+                Modifier.fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(DarkCard.copy(0.6f))
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+            ) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("⏱ فاصله بین سیگنال‌ها (دقت بالاتر)",
+                        style = MaterialTheme.typography.labelMedium, color = Color.White.copy(0.7f))
+                    Text("${smart.gapMs}ms", style = MaterialTheme.typography.labelMedium,
+                        color = NeonCyan, fontWeight = FontWeight.Bold)
+                }
+                Slider(
+                    value = smart.gapMs.toFloat(),
+                    onValueChange = { onGap(it.toLong()) },
+                    valueRange = 0f..500f,
+                    colors = SliderDefaults.colors(
+                        thumbColor = NeonCyan, activeTrackColor = NeonCyan,
+                        inactiveTrackColor = NeonCyan.copy(0.2f)
+                    )
+                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("🔁 تکرار هر کد: ${smart.repeatEach}×",
+                        style = MaterialTheme.typography.labelMedium, color = Color.White.copy(0.7f))
+                    Text("مطمئن‌تر ولی کندتر", style = MaterialTheme.typography.labelMedium,
+                        color = Color.White.copy(0.4f))
+                }
+                Slider(
+                    value = smart.repeatEach.toFloat(),
+                    onValueChange = { onRepeat(it.toInt()) },
+                    valueRange = 1f..5f, steps = 3,
+                    colors = SliderDefaults.colors(
+                        thumbColor = NeonPurple, activeTrackColor = NeonPurple,
+                        inactiveTrackColor = NeonPurple.copy(0.2f)
+                    )
+                )
+            }
 
             Spacer(Modifier.weight(1f))
 

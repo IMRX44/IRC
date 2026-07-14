@@ -664,12 +664,53 @@ object IrDatabase {
         )),
     )
 
+    // Categories that are primarily Smart-Scan driven (generic manual controls)
+    private val stbBrands = listOf(
+        DeviceBrand("Generic Receiver", listOf(
+            IrSignal("Power", 38000, nec(0x08, 0x08), "روشن/خاموش"),
+            IrSignal("CH +", 38000, nec(0x08, 0x00), "کانال بالا"),
+            IrSignal("CH -", 38000, nec(0x08, 0x01), "کانال پایین"),
+            IrSignal("Vol +", 38000, nec(0x08, 0x02), "صدا بالا"),
+            IrSignal("Vol -", 38000, nec(0x08, 0x03), "صدا پایین"),
+            IrSignal("Menu", 38000, nec(0x08, 0x0B), "منو"),
+            IrSignal("OK", 38000, nec(0x08, 0x0D), "تأیید"),
+            IrSignal("Back", 38000, nec(0x08, 0x0E), "برگشت"),
+        )),
+    )
+    private val fanBrands = listOf(
+        DeviceBrand("Generic Fan", listOf(
+            IrSignal("Power", 38000, nec(0x00, 0x08), "روشن/خاموش"),
+            IrSignal("Speed +", 38000, nec(0x00, 0x02), "سرعت بالا"),
+            IrSignal("Speed -", 38000, nec(0x00, 0x03), "سرعت پایین"),
+            IrSignal("Swing", 38000, nec(0x00, 0x0C), "چرخش"),
+            IrSignal("Timer", 38000, nec(0x00, 0x0D), "تایمر"),
+            IrSignal("Mode", 38000, nec(0x00, 0x0E), "حالت"),
+        )),
+    )
+    private val lightBrands = listOf(
+        DeviceBrand("RGB LED (24-key)", listOf(
+            IrSignal("Power On", 38000, nec(0x00, 0x40), "روشن"),
+            IrSignal("Power Off", 38000, nec(0x00, 0x41), "خاموش"),
+            IrSignal("Bright +", 38000, nec(0x00, 0x5C), "روشنایی بالا"),
+            IrSignal("Bright -", 38000, nec(0x00, 0x5D), "روشنایی پایین"),
+            IrSignal("Red", 38000, nec(0x00, 0x58), "قرمز"),
+            IrSignal("Green", 38000, nec(0x00, 0x59), "سبز"),
+            IrSignal("Blue", 38000, nec(0x00, 0x45), "آبی"),
+            IrSignal("White", 38000, nec(0x00, 0x44), "سفید"),
+            IrSignal("Flash", 38000, nec(0x00, 0x47), "فلاش"),
+            IrSignal("Fade", 38000, nec(0x00, 0x4F), "محو"),
+        )),
+    )
+
     val categories = listOf(
         DeviceCategory("tv", "تلویزیون", "📺", tvBrands),
         DeviceCategory("ac", "کولر گازی", "❄️", acBrands),
         DeviceCategory("projector", "پروژکتور", "📽️", projectorBrands),
+        DeviceCategory("stb", "رسیور / دیجیتال", "📡", stbBrands),
         DeviceCategory("dvd", "DVD / Blu-ray", "💿", dvdBrands),
         DeviceCategory("sound", "سیستم صوتی", "🔊", soundBrands),
+        DeviceCategory("fan", "پنکه / فن", "🌀", fanBrands),
+        DeviceCategory("light", "لامپ / LED", "💡", lightBrands),
     )
 
     // ── Brute-force scanner ───────────────────────────────────────────────────
