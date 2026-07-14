@@ -3,26 +3,39 @@ package com.irblaster.universal.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.irblaster.universal.data.BrandProfile
 import com.irblaster.universal.data.DeviceBrand
 import com.irblaster.universal.data.DeviceCategory
 import com.irblaster.universal.data.IrDatabase
 import com.irblaster.universal.data.IrSignal
 import com.irblaster.universal.data.IrTransmitter
+import com.irblaster.universal.data.PowerCode
+import com.irblaster.universal.data.PowerScan
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-data class ScanState(
-    val isScanning: Boolean = false,
-    val totalSignals: Int = 0,
-    val currentIndex: Int = 0,
-    val currentSignal: IrSignal? = null,
-    val markedWorking: List<IrSignal> = emptyList(),
-    val delayMs: Long = 80L,
-)
+/** Smart brand-driven power scan state. */
+data class SmartScanState(
+    val active: Boolean = false,
+    val running: Boolean = false,
+    val categoryId: String = "",
+    val brand: String = "",
+    val codes: List<PowerCode> = emptyList(),
+    val index: Int = 0,
+    val foundCode: PowerCode? = null,
+    val finished: Boolean = false,
+    val gapMs: Long = 0L,
+) {
+    val current: PowerCode? get() = codes.getOrNull(index)
+    val progress: Float get() = if (codes.isEmpty()) 0f else (index + 1f) / codes.size
+}
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     val transmitter = IrTransmitter(application)
@@ -37,10 +50,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _lastTransmitted = MutableStateFlow<IrSignal?>(null)
     val lastTransmitted: StateFlow<IrSignal?> = _lastTransmitted.asStateFlow()
 
-    private val _scanState = MutableStateFlow(ScanState())
-    val scanState: StateFlow<ScanState> = _scanState.asStateFlow()
+    private val _smart = MutableStateFlow(SmartScanState())
+    val smart: StateFlow<SmartScanState> = _smart.asStateFlow()
 
-    private var scanJob: Job? = null
+    private var smartJob: Job? = null
 
     fun selectCategory(category: DeviceCategory) {
         _selectedCategory.value = category
@@ -52,57 +65,94 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun transmitSignal(signal: IrSignal) {
-        transmitter.transmit(signal)
+        viewModelScope.launch(Dispatchers.IO) { transmitter.transmit(signal) }
         _lastTransmitted.value = signal
     }
 
-    fun startBruteForceScan(categoryId: String, delayMs: Long = 80L) {
-        val signals = IrDatabase.generateBruteForceSignals()
+    // ── Smart brand scan ─────────────────────────────────────────────────────
 
-        scanJob?.cancel()
-        _scanState.value = ScanState(
-            isScanning = true,
-            totalSignals = signals.size,
-            currentIndex = 0,
-            delayMs = delayMs
+    fun brandProfilesFor(categoryId: String): List<BrandProfile> = PowerScan.brandsFor(categoryId)
+
+    fun startSmartScan(categoryId: String, brand: String, gapMs: Long = 0L) {
+        val codes = PowerScan.forBrand(categoryId, brand)
+        smartJob?.cancel()
+        _smart.value = SmartScanState(
+            active = true, running = true, categoryId = categoryId,
+            brand = brand, codes = codes, index = 0, gapMs = gapMs
         )
+        runSmartLoop()
+    }
 
-        scanJob = viewModelScope.launch {
-            signals.forEachIndexed { index, signal ->
-                val current = _scanState.value
-                if (!current.isScanning) return@launch
-
-                _scanState.value = current.copy(
-                    currentIndex = index,
-                    currentSignal = signal
-                )
-                transmitter.transmit(signal)
-                delay(current.delayMs)
+    private fun runSmartLoop() {
+        smartJob?.cancel()
+        smartJob = viewModelScope.launch(Dispatchers.IO) {
+            while (isActive) {
+                val s = _smart.value
+                if (!s.running || s.foundCode != null) break
+                val code = s.codes.getOrNull(s.index) ?: run {
+                    _smart.value = s.copy(running = false, finished = true)
+                    return@launch
+                }
+                transmitter.transmitRaw(code.frequency, code.pattern)
+                if (s.gapMs > 0) delay(s.gapMs)
+                val cur = _smart.value
+                if (!cur.running) break
+                if (cur.index >= cur.codes.lastIndex) {
+                    _smart.value = cur.copy(running = false, finished = true)
+                    break
+                }
+                _smart.value = cur.copy(index = cur.index + 1)
             }
-            _scanState.value = _scanState.value.copy(isScanning = false)
         }
     }
 
-    fun pauseScan() {
-        scanJob?.cancel()
-        _scanState.value = _scanState.value.copy(isScanning = false)
+    fun pauseSmart() {
+        _smart.value = _smart.value.copy(running = false)
+        smartJob?.cancel()
     }
 
-    fun markCurrentWorking() {
-        val state = _scanState.value
-        val signal = state.currentSignal ?: return
-        _scanState.value = state.copy(
-            markedWorking = state.markedWorking + signal
-        )
+    fun resumeSmart() {
+        if (_smart.value.foundCode != null) return
+        _smart.value = _smart.value.copy(running = true, finished = false)
+        runSmartLoop()
     }
 
-    fun resetScan() {
-        scanJob?.cancel()
-        _scanState.value = ScanState()
+    /** Manual step forward: pauses auto, sends the next code once. */
+    fun stepNext() {
+        smartJob?.cancel()
+        val s = _smart.value
+        val next = (s.index + 1).coerceAtMost(s.codes.lastIndex)
+        _smart.value = s.copy(running = false, index = next, finished = false)
+        resendCurrent()
+    }
+
+    fun stepPrev() {
+        smartJob?.cancel()
+        val s = _smart.value
+        val prev = (s.index - 1).coerceAtLeast(0)
+        _smart.value = s.copy(running = false, index = prev, finished = false)
+        resendCurrent()
+    }
+
+    fun resendCurrent() {
+        val code = _smart.value.current ?: return
+        viewModelScope.launch(Dispatchers.IO) { transmitter.transmitRaw(code.frequency, code.pattern) }
+    }
+
+    /** User confirmed the device reacted — lock in this code. */
+    fun confirmWorked() {
+        smartJob?.cancel()
+        val s = _smart.value
+        _smart.value = s.copy(running = false, foundCode = s.current)
+    }
+
+    fun exitSmart() {
+        smartJob?.cancel()
+        _smart.value = SmartScanState()
     }
 
     override fun onCleared() {
-        scanJob?.cancel()
+        smartJob?.cancel()
         super.onCleared()
     }
 }

@@ -23,7 +23,7 @@ import com.irblaster.universal.viewmodel.MainViewModel
 sealed class Screen {
     object Home : Screen()
     data class Remote(val categoryId: String) : Screen()
-    object Scan : Screen()
+    data class Scan(val categoryId: String) : Screen()
 }
 
 class MainActivity : ComponentActivity() {
@@ -47,17 +47,19 @@ class MainActivity : ComponentActivity() {
                                 viewModel.selectCategory(viewModel.categories.first { it.id == id })
                                 currentScreen = Screen.Remote(id)
                             },
-                            onScanClick = { currentScreen = Screen.Scan },
+                            onScanClick = { currentScreen = Screen.Scan("tv") },
                             onSettingsClick = { }
                         )
                         is Screen.Remote -> RemoteScreen(
                             viewModel = viewModel,
                             categoryId = screen.categoryId,
-                            onBack = { currentScreen = Screen.Home }
+                            onBack = { currentScreen = Screen.Home },
+                            onSmartScan = { currentScreen = Screen.Scan(screen.categoryId) }
                         )
                         is Screen.Scan -> ScanScreen(
                             viewModel = viewModel,
-                            onBack = { currentScreen = Screen.Home }
+                            categoryId = screen.categoryId,
+                            onBack = { viewModel.exitSmart(); currentScreen = Screen.Home }
                         )
                     }
                 }

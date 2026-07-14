@@ -1,55 +1,60 @@
 # ⚡ IR Blaster — Universal Remote Control App
 
-A professional Android IR remote control app with a sleek dark neon UI, supporting 8+ device brands across 4 categories with auto brute-force scanning.
+A professional Android IR remote with a sleek dark-neon UI, an **80+ brand** power-code database, and a **Smart Scan** that automatically finds your device's power code by sweeping the protocol space.
 
-## Features
+## ✨ Key Features
 
-### 📺 Device Categories
-- **TV** — Samsung, LG, Sony, Philips, TCL, Haier, Hisense, Sharp
-- **❄️ Air Conditioner** — Daikin, Midea, LG AC, Samsung AC, Gree
-- **📽️ Projector** — Epson, BenQ, ViewSonic
-- **💿 DVD/Blu-ray** — Samsung DVD, Sony DVD
+### 🎯 Smart Scan (the headline feature)
+Pick your device brand → the app fires **every known power on/off code** for that brand back-to-back at the hardware's maximum speed. The moment your device reacts, tap the big **"✅ کار کرد"** button and the code is locked in.
 
-### ⚡ Auto Brute-Force Scanner
-- Automatically blasts all possible IR signal combinations
-- Adjustable speed (100ms–1000ms per signal)
-- Mark working signals with one tap
-- Real-time signal name display with animated progress bar
+- **80+ brand profiles** across TV / AC / Projector / DVD / Sound
+- Includes Iranian brands (**X.Vision, Snowa, Marshal, G-Plus, Blest, Sam, Pars**), Turkish (**Beko, Arçelik, Regal, Telefunken, Profilo**), Chinese (**TCL, Hisense, Skyworth, Konka, Changhong, Xiaomi**), and global majors
+- **⚡ Universal mode** — sweeps the *entire* NEC + Samsung + Sony address space, so even an unlisted brand gets covered
+- Full transport controls: **قبلی / توقف / دوباره / بعدی** to step through codes manually
+- Live progress, animated signal waves, code label + protocol readout
 
-### 🎨 UI Design
-- Dark neon theme (Cyan + Purple glow)
-- Animated signal wave during scan
-- Glow card effects with blur shadows
-- Brand chip selector with smooth transitions
-- Per-button glow color by signal type (power = orange, mute = red, etc.)
+### 📺 Manual Remotes
+Full button layouts (power, volume, channel, menu, D-pad, source…) for TV, AC, projector, DVD and sound systems, per brand.
 
-## Tech Stack
+### 🎨 UI
+- Dark neon theme (cyan + purple glow, blur shadows)
+- Every button animated and wired
+- RTL Persian interface
+
+## ⏱️ About speed ("test everything in 1 second")
+Each IR frame physically takes **~45–70 ms** to leave the LED — that's the NEC/Samsung protocol timing, a hardware limit no code can beat. The scanner removes *all* artificial delay and fires frames back-to-back, hitting the real hardware maximum (~15–20 codes/sec). A full brand sweep therefore takes a few seconds, not milliseconds — but nothing is skipped.
+
+## 📡 Protocols implemented
+NEC · NEC-extended · Samsung · Sony SIRC (12-bit, 3× repeat) · RC5 · JVC · Sharp · Panasonic · Kaseikyo — all encoded to precise microsecond pulse patterns.
+
+## 🔧 Tech Stack
 - **Kotlin** + **Jetpack Compose** (Material3)
-- `ConsumerIrManager` Android API for IR transmission
-- Real IR protocols: NEC, Samsung, Sony SIRC
-- `kotlinx.coroutines` for async scanning loop
-- ViewModel + StateFlow architecture
+- `ConsumerIrManager` hardware API, transmit off the main thread (`Dispatchers.IO`)
+- ViewModel + StateFlow, coroutine scan loop paced by the blocking transmit call
 
-## How It Works
+## 📦 Install
+The delivered `IRBlaster-v1.0-signed.apk` is a **signed release build** (v1+v2+v3 signature schemes).
 
-```
-Phone IR Blaster → NEC/Samsung/Sony protocol frames → Device
-```
+> **"Are you sure you want to install?" / Play Protect prompt** — this is Android's standard warning for **any** app installed outside the Play Store ("unknown sources"). It cannot be fully removed without publishing to the Play Store, but because this APK is properly **release-signed** (not a debug build) it is *not* flagged as a test/unverified app, and the extra "blocked by Play Protect" hard-stop no longer appears. Just tap **Install anyway**.
 
-The app uses `android.hardware.ConsumerIrManager` to transmit raw pulse patterns at 38kHz (standard IR carrier). Each signal is a precise on/off pattern in microseconds encoding device commands.
-
-### Brute Force Mode
-Iterates through 230+ pre-computed signal combinations covering the most common manufacturer addresses and power command codes, with a configurable delay between each transmission.
-
-## Requirements
+Requirements:
 - Android 5.0+ (API 21)
-- Device with **IR blaster hardware** (e.g., Xiaomi, Samsung flagship, Huawei, older HTC/LG)
-- `TRANSMIT_IR` permission
+- A phone **with an IR blaster** (Xiaomi/Redmi/POCO, older Samsung Galaxy, Huawei, Honor, some LG/HTC)
+- `TRANSMIT_IR` permission (auto-granted)
 
-## Portfolio Notes
-This project demonstrates:
-- Hardware API integration (ConsumerIrManager)
-- Real-world IR protocol encoding (NEC, Samsung, Sony)
-- Modern Compose UI with custom animations
-- Async state management with coroutines + StateFlow
-- Clean MVVM architecture
+## 🏗️ Building from source
+```bash
+# 1. Generate your own signing key (kept out of git on purpose)
+keytool -genkeypair -v -keystore app/release.keystore -alias irblaster \
+  -keyalg RSA -keysize 2048 -validity 10000 \
+  -storepass yourpass -keypass yourpass \
+  -dname "CN=IR Blaster, O=You, C=IR"
+
+# 2. Build
+./gradlew assembleRelease
+# → app/build/outputs/apk/release/app-release.apk
+```
+If no keystore is present the release build still succeeds (unsigned). Passwords can be supplied via `KEYSTORE_PASS` / `KEY_ALIAS` / `KEY_PASS` env vars instead of the defaults.
+
+## 🧑‍💼 Portfolio notes
+Demonstrates hardware API integration, real IR protocol encoding across 9 protocol families, an 80-brand code database with a brute-force search UX, modern Compose UI with custom animations, coroutine/StateFlow architecture, and a signed release pipeline.

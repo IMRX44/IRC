@@ -1,0 +1,23 @@
+# Build artifacts
+.gradle/
+build/
+app/build/
+*/build/
+local.properties
+
+# Android Studio
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Keystore
+*.jks
+*.keystore
+
+# Misc
+.DS_Store
+
+# Built APKs (delivered separately, not committed)
+*.apk

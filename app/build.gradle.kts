@@ -16,9 +16,26 @@ android {
         versionName = "1.0.0"
     }
 
+    // Release signing. The keystore is intentionally NOT committed (see README
+    // for the one-line command to generate your own). If it's absent the release
+    // build still succeeds — just unsigned — so CI/clones don't break.
+    val keystoreFile = file("release.keystore")
+    val hasKeystore = keystoreFile.exists()
+    signingConfigs {
+        if (hasKeystore) {
+            create("release") {
+                storeFile = keystoreFile
+                storePassword = System.getenv("KEYSTORE_PASS") ?: "irblaster2024"
+                keyAlias = System.getenv("KEY_ALIAS") ?: "irblaster"
+                keyPassword = System.getenv("KEY_PASS") ?: "irblaster2024"
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = true
+            isMinifyEnabled = false
+            if (hasKeystore) signingConfig = signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }

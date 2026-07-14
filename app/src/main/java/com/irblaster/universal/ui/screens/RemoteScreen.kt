@@ -69,6 +69,7 @@ fun RemoteScreen(
     viewModel: MainViewModel,
     categoryId: String,
     onBack: () -> Unit,
+    onSmartScan: () -> Unit = {},
 ) {
     val category = viewModel.categories.find { it.id == categoryId } ?: return
     val selectedBrand by viewModel.selectedBrand.collectAsState()
@@ -112,6 +113,22 @@ fun RemoteScreen(
                     color = Color.White,
                     fontWeight = FontWeight.Bold
                 )
+                Spacer(Modifier.weight(1f))
+                Row(
+                    modifier = Modifier
+                        .padding(end = 12.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .border(1.dp, NeonGreen.copy(0.7f), RoundedCornerShape(20.dp))
+                        .background(NeonGreen.copy(0.12f))
+                        .clickable { onSmartScan() }
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Bolt, null, tint = NeonGreen, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("اسکن هوشمند", style = MaterialTheme.typography.labelLarge,
+                        color = NeonGreen, fontWeight = FontWeight.Bold)
+                }
             }
 
             // Brand selector

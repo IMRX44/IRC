@@ -21,9 +21,9 @@ data class DeviceCategory(
 
 object IrDatabase {
 
-    // ── Protocol encoders ────────────────────────────────────────────────────
+    // ── Protocol encoders (public so PowerScan can reuse them) ───────────────
 
-    private fun nec(addr: Int, cmd: Int): IntArray {
+    fun nec(addr: Int, cmd: Int): IntArray {
         val p = mutableListOf(9000, 4500)
         fun bits(v: Int, inv: Boolean = false) {
             val b = if (inv) v.inv() and 0xFF else v
@@ -34,7 +34,7 @@ object IrDatabase {
         return p.toIntArray()
     }
 
-    private fun nec2(addrLo: Int, addrHi: Int, cmd: Int): IntArray {
+    fun nec2(addrLo: Int, addrHi: Int, cmd: Int): IntArray {
         val p = mutableListOf(9000, 4500)
         fun bits(v: Int) = repeat(8) { i -> p += 560; p += if ((v shr i) and 1 == 1) 1690 else 560 }
         bits(addrLo); bits(addrHi); bits(cmd); bits(cmd.inv() and 0xFF)
@@ -42,7 +42,7 @@ object IrDatabase {
         return p.toIntArray()
     }
 
-    private fun samsung(addr: Int, cmd: Int): IntArray {
+    fun samsung(addr: Int, cmd: Int): IntArray {
         val p = mutableListOf(4500, 4500)
         fun bits(v: Int) = repeat(8) { i -> p += 560; p += if ((v shr i) and 1 == 1) 1690 else 560 }
         bits(addr); bits(addr); bits(cmd); bits(cmd.inv() and 0xFF)
@@ -68,14 +68,14 @@ object IrDatabase {
         return intArrayOf(889,889,889,889,889,889,889,1778,889,889,889,1778,889,889,889,889,889,1778,889,889,889,889,889,889,889)
     }
 
-    private fun sony12(addr: Int, cmd: Int): IntArray {
+    fun sony12(addr: Int, cmd: Int): IntArray {
         val p = mutableListOf(2400, 600)
         repeat(7) { i -> p += 600; p += if ((cmd shr (6-i)) and 1 == 1) 1200 else 600 }
         repeat(5) { i -> p += 600; p += if ((addr shr (4-i)) and 1 == 1) 1200 else 600 }
         return p.toIntArray()
     }
 
-    private fun jvc(addr: Int, cmd: Int): IntArray {
+    fun jvc(addr: Int, cmd: Int): IntArray {
         val p = mutableListOf(8400, 4200)
         fun bits(v: Int) = repeat(8) { i -> p += 526; p += if ((v shr i) and 1 == 1) 1574 else 526 }
         bits(addr); bits(cmd)
@@ -83,7 +83,7 @@ object IrDatabase {
         return p.toIntArray()
     }
 
-    private fun sharp(addr: Int, cmd: Int): IntArray {
+    fun sharp(addr: Int, cmd: Int): IntArray {
         val p = mutableListOf<Int>()
         fun bit(b: Int) { p += 320; p += if (b == 1) 1000 else 680 }
         repeat(5) { i -> bit((addr shr i) and 1) }
@@ -92,7 +92,7 @@ object IrDatabase {
         return p.toIntArray()
     }
 
-    private fun panasonic(addr: Int, cmd: Int): IntArray {
+    fun panasonic(addr: Int, cmd: Int): IntArray {
         val p = mutableListOf(3456, 1728)
         fun bits(v: Int, n: Int = 8) = repeat(n) { i -> p += 432; p += if ((v shr i) and 1 == 1) 1296 else 432 }
         bits(0x40, 16); bits(addr); bits(cmd); bits(addr xor cmd)
