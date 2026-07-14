@@ -21,7 +21,7 @@ data class ScanState(
     val currentIndex: Int = 0,
     val currentSignal: IrSignal? = null,
     val markedWorking: List<IrSignal> = emptyList(),
-    val delayMs: Long = 300L,
+    val delayMs: Long = 80L,
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -56,12 +56,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _lastTransmitted.value = signal
     }
 
-    fun startBruteForceScan(categoryId: String, delayMs: Long = 300L) {
-        val signals = when (categoryId) {
-            "tv" -> IrDatabase.generateBruteForceSignals(38000)
-            "ac" -> IrDatabase.generateBruteForceSignals(38000)
-            else -> IrDatabase.generateBruteForceSignals(38000)
-        }
+    fun startBruteForceScan(categoryId: String, delayMs: Long = 80L) {
+        val signals = IrDatabase.generateBruteForceSignals()
 
         scanJob?.cancel()
         _scanState.value = ScanState(

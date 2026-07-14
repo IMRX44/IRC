@@ -260,7 +260,7 @@ fun ScanScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("سرعت اسکن", color = Color.White.copy(0.7f), style = MaterialTheme.typography.labelLarge)
+                        Text("تأخیر بین سیگنال‌ها", color = Color.White.copy(0.7f), style = MaterialTheme.typography.labelLarge)
                         Text(
                             "${scanState.delayMs}ms",
                             color = NeonCyan,
@@ -271,7 +271,7 @@ fun ScanScreen(
                     Slider(
                         value = scanState.delayMs.toFloat(),
                         onValueChange = { },
-                        valueRange = 100f..1000f,
+                        valueRange = 30f..500f,
                         colors = SliderDefaults.colors(
                             thumbColor = NeonCyan,
                             activeTrackColor = NeonCyan,
@@ -282,8 +282,8 @@ fun ScanScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("سریع‌ترین", color = Color.White.copy(0.4f), style = MaterialTheme.typography.labelMedium)
-                        Text("کندترین", color = Color.White.copy(0.4f), style = MaterialTheme.typography.labelMedium)
+                        Text("⚡ 30ms فوق سریع", color = Color.White.copy(0.4f), style = MaterialTheme.typography.labelMedium)
+                        Text("🐢 500ms کند", color = Color.White.copy(0.4f), style = MaterialTheme.typography.labelMedium)
                     }
                 }
 
