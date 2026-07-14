@@ -18,6 +18,8 @@ data class PowerCode(
     val frequency: Int,
     val pattern: IntArray,
     val protocol: String,
+    val addr: Int = -1,   // device address (when known) so a full remote can be built
+    val cmd: Int = -1,
 )
 
 data class BrandProfile(
@@ -45,7 +47,7 @@ object PowerScan {
     private fun necCodes(addresses: List<Int>, cmds: List<Int>, tag: String): List<PowerCode> {
         val out = ArrayList<PowerCode>(addresses.size * cmds.size)
         for (a in addresses) for (c in cmds)
-            out += PowerCode("$tag A=${a.h}/C=${c.h}", 38000, IrDatabase.nec(a, c), "NEC")
+            out += PowerCode("$tag A=${a.h}/C=${c.h}", 38000, IrDatabase.nec(a, c), "NEC", a, c)
         return out
     }
 
@@ -53,14 +55,14 @@ object PowerScan {
     private fun necSweepAll(cmds: List<Int>, tag: String): List<PowerCode> {
         val out = ArrayList<PowerCode>(256 * cmds.size)
         for (a in 0..255) for (c in cmds)
-            out += PowerCode("$tag A=${a.h}/C=${c.h}", 38000, IrDatabase.nec(a, c), "NEC")
+            out += PowerCode("$tag A=${a.h}/C=${c.h}", 38000, IrDatabase.nec(a, c), "NEC", a, c)
         return out
     }
 
     private fun samsungCodes(addresses: List<Int>, cmds: List<Int>): List<PowerCode> {
         val out = ArrayList<PowerCode>()
         for (a in addresses) for (c in cmds)
-            out += PowerCode("Samsung A=${a.h}/C=${c.h}", 38000, IrDatabase.samsung(a, c), "Samsung")
+            out += PowerCode("Samsung A=${a.h}/C=${c.h}", 38000, IrDatabase.samsung(a, c), "Samsung", a, c)
         return out
     }
 
@@ -68,7 +70,7 @@ object PowerScan {
         val out = ArrayList<PowerCode>()
         for (d in sonyDeviceIds) for (c in sonyPowerCmds) {
             val f = IrDatabase.sony12(d, c)
-            out += PowerCode("Sony D=${d.h}/C=${c.h}", 40000, f + f + f, "SIRC")
+            out += PowerCode("Sony D=${d.h}/C=${c.h}", 40000, f + f + f, "SIRC", d, c)
         }
         return out
     }

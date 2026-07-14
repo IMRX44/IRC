@@ -89,6 +89,7 @@ fun ScanScreen(
     viewModel: com.irblaster.universal.viewmodel.MainViewModel,
     categoryId: String,
     onBack: () -> Unit,
+    onOpenRemote: () -> Unit = {},
 ) {
     val smart by viewModel.smart.collectAsState()
 
@@ -106,7 +107,17 @@ fun ScanScreen(
             )
         } else if (smart.foundCode != null) {
             FoundView(smart, onBack = { viewModel.exitSmart(); onBack() },
-                onRetry = { viewModel.startSmartScan(smart.categoryId, smart.brand) })
+                onRetry = { viewModel.startSmartScan(smart.categoryId, smart.brand) },
+                onOpenRemote = {
+                    val code = smart.foundCode
+                    if (code != null) {
+                        val built = com.irblaster.universal.data.RemoteBuilder
+                            .buildFromCode(smart.brand, smart.categoryId, code)
+                        viewModel.selectBrand(built)
+                        viewModel.exitSmart()
+                        onOpenRemote()
+                    }
+                })
         } else {
             ScanningView(
                 smart = smart,
@@ -447,6 +458,7 @@ private fun FoundView(
     smart: com.irblaster.universal.viewmodel.SmartScanState,
     onBack: () -> Unit,
     onRetry: () -> Unit,
+    onOpenRemote: () -> Unit,
 ) {
     val code = smart.foundCode ?: return
     val infinite = rememberInfiniteTransition(label = "glow")
@@ -479,11 +491,14 @@ private fun FoundView(
         Text(code.label, style = MaterialTheme.typography.labelLarge,
             color = NeonCyan, fontFamily = FontFamily.Monospace)
         Spacer(Modifier.height(6.dp))
-        Text("این کد Power دستگاه توئه. حالا می‌تونی از این استفاده کنی.",
+        Text("از روی این آدرس یه ریموت کامل (صدا، کانال، منو...) می‌سازیم.",
             style = MaterialTheme.typography.bodyMedium,
             color = Color.White.copy(0.5f), textAlign = TextAlign.Center)
         Spacer(Modifier.weight(1f))
-        NeonButton("✅ عالیه، بازگشت", onClick = onBack, color = NeonGreen,
+        NeonButton("🎮 باز کردن ریموت کامل", onClick = onOpenRemote, color = NeonCyan,
+            modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(10.dp))
+        NeonButton("✅ فقط بازگشت", onClick = onBack, color = NeonGreen,
             modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(10.dp))
         NeonButton("🔄 ادامه اسکن (این درست نبود)", onClick = onRetry,

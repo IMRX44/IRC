@@ -28,9 +28,12 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -74,7 +77,15 @@ fun RemoteScreen(
     val category = viewModel.categories.find { it.id == categoryId } ?: return
     val selectedBrand by viewModel.selectedBrand.collectAsState()
     val lastSignal by viewModel.lastTransmitted.collectAsState()
-    val brand = selectedBrand ?: category.brands.firstOrNull()
+
+    val allBrands = remember(categoryId) {
+        com.irblaster.universal.data.RemoteBuilder.brandsForRemote(categoryId)
+    }
+    var query by remember { mutableStateOf("") }
+    val brands = remember(query, allBrands) {
+        val q = query.trim()
+        if (q.isEmpty()) allBrands else allBrands.filter { it.name.contains(q, ignoreCase = true) }
+    }
 
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { delay(50); visible = true }
@@ -131,15 +142,44 @@ fun RemoteScreen(
                 }
             }
 
+            // Search bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 10.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .border(1.dp, NeonCyan.copy(0.4f), RoundedCornerShape(14.dp))
+                    .background(DarkCard)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Search, null, tint = NeonCyan, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(10.dp))
+                Box(Modifier.weight(1f)) {
+                    if (query.isEmpty()) {
+                        Text("جستجوی ${allBrands.size} برند...",
+                            style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(0.35f))
+                    }
+                    BasicTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.White),
+                        cursorBrush = SolidColor(NeonCyan),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
             // Brand selector
             LazyRow(
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                itemsIndexed(category.brands) { _, b ->
+                itemsIndexed(brands) { _, b ->
                     BrandChip(
                         brand = b,
-                        selected = b == (selectedBrand ?: category.brands.firstOrNull()),
+                        selected = b.name == (selectedBrand?.name ?: brands.firstOrNull()?.name),
                         onClick = { viewModel.selectBrand(b) }
                     )
                 }
@@ -168,8 +208,9 @@ fun RemoteScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            // Signal buttons grid
-            val currentBrand = selectedBrand ?: category.brands.firstOrNull()
+            // Signal buttons grid. Prefer the exact selected brand (it may be a
+            // remote freshly built from a confirmed Smart-Scan address).
+            val currentBrand = selectedBrand ?: brands.firstOrNull()
             if (currentBrand != null) {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(3),

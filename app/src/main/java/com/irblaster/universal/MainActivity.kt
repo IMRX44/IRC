@@ -59,7 +59,8 @@ class MainActivity : ComponentActivity() {
                         is Screen.Scan -> ScanScreen(
                             viewModel = viewModel,
                             categoryId = screen.categoryId,
-                            onBack = { viewModel.exitSmart(); currentScreen = Screen.Home }
+                            onBack = { viewModel.exitSmart(); currentScreen = Screen.Home },
+                            onOpenRemote = { currentScreen = Screen.Remote(screen.categoryId) }
                         )
                     }
                 }
