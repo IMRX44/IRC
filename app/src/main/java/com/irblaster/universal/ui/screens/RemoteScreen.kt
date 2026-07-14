@@ -29,7 +29,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.BoltOutlined
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -156,7 +156,7 @@ fun RemoteScreen(
             if (currentBrand != null) {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(3),
-                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp, bottom = 100.dp),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize()
@@ -257,7 +257,7 @@ fun SignalButton(signal: IrSignal, isFlashing: Boolean, onClick: () -> Unit) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 if (isPower) {
                     Icon(
-                        Icons.Default.BoltOutlined,
+                        Icons.Default.Bolt,
                         contentDescription = null,
                         tint = glowColor,
                         modifier = Modifier.size(20.dp)

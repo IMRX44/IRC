@@ -48,5 +48,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.gson)
+    implementation("androidx.appcompat:appcompat:1.7.0")
     debugImplementation(libs.androidx.ui.tooling)
 }

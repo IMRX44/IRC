@@ -102,9 +102,10 @@ fun HomeScreen(
                     Column {
                         Text(
                             "IR Blaster",
-                            style = MaterialTheme.typography.headlineLarge,
+                            style = MaterialTheme.typography.headlineLarge.copy(
+                                brush = Brush.linearGradient(listOf(NeonCyan, NeonPurple))
+                            ),
                             fontWeight = FontWeight.ExtraBold,
-                            brush = Brush.linearGradient(listOf(NeonCyan, NeonPurple))
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             PulsingDot(
